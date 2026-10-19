@@ -72,8 +72,15 @@ export async function setupDadReminders() {
 
 
 // 读 health 房所有在用的药 → 逐条排成本地通知（每次先清旧的重排）
+// 由 Hush · 息 总开关 pause 时跳过（否则 pause 期间保存药物会反而排上）
 export async function syncMedReminders() {
   if (!native()) return;
+  try {
+    if (typeof window !== 'undefined' &&
+        window.localStorage?.getItem('v2-proactive-pause') === '1') {
+      return;
+    }
+  } catch { /* ignore */ }
   type Med = { name: string; dose: string; reminder_times: string[];
     frequency: string; weekly_days: number[] | null; active: boolean };
   let meds: Med[] = [];

@@ -278,39 +278,6 @@ async function setState(key: string, value: any) {
     .upsert({ key, value, updated_at: new Date().toISOString() });
 }
 
-function getSlotRange(slot: string): { startHour: number; endHour: number } {
-  switch (slot) {
-    case 'morning': return { startHour: 6, endHour: 12 };
-    case 'noon': return { startHour: 12, endHour: 16 };
-    case 'evening': return { startHour: 16, endHour: 21 };
-    case 'night': return { startHour: 21, endHour: 30 };
-    default: return { startHour: 0, endHour: 24 };
-  }
-}
-
-function isInSlot(time: string, slot: string): boolean {
-  if (!time || typeof time !== 'string') return false;
-  const parts = time.split(':');
-  const h = parseInt(parts[0], 10);
-  const m = parseInt(parts[1] || '0', 10);
-  if (isNaN(h)) return false;
-  const totalHour = h + m / 60;
-  const { startHour, endHour } = getSlotRange(slot);
-  if (endHour > 24) return totalHour >= startHour || totalHour < (endHour - 24);
-  return totalHour >= startHour && totalHour < endHour;
-}
-
-function shouldTakeToday(med: any, today: string): boolean {
-  if (!med.active) return false;
-  if (med.frequency === 'as_needed') return false;
-  if (med.frequency === 'daily') return true;
-  if (med.frequency === 'weekly') {
-    const dayOfWeek = new Date(today + 'T12:00:00-07:00').getDay();
-    return Array.isArray(med.weekly_days) && med.weekly_days.includes(dayOfWeek);
-  }
-  return false;
-}
-
 function autoSlot(hour: number): string {
   if (hour >= 6 && hour < 12) return 'morning';
   if (hour >= 12 && hour < 16) return 'noon';
@@ -661,46 +628,10 @@ export async function GET(req: NextRequest) {
     const isWeekend = weekday === 'Sat' || weekday === 'Sun';
     const isWorkHour = !isWeekend && hour >= 6 && hour < 18;
 
-    // 1. 药物提醒（永远优先）
-    try {
-      const { data: meds } = await supabase
-        .from('medications').select('*').eq('active', true);
+    // 1. 药物提醒 —— 走本地 Capacitor LocalNotifications (src/lib/notify.ts
+    //   的 syncMedReminders)，分钟精确、无需 app 在线、不占 Anthropic 配额。
+    //   服务端这条线已下线，避免跟本地重复提醒。
 
-      const pendingMeds: Array<{ name: string; dose: string; time: string }> = [];
-
-      for (const med of meds || []) {
-        if (!shouldTakeToday(med, today)) continue;
-        for (const time of med.reminder_times || []) {
-          // 药物提醒必须精确到 hour 匹配（不用 slot 范围）——
-          // slot 太宽（5 小时），外部 cron 每小时 fire 时会导致提前几小时提醒。
-          const medHour = parseInt((time || '').split(':')[0], 10);
-          if (Number.isNaN(medHour) || medHour !== hour) continue;
-
-          const { data: log } = await supabase
-            .from('medication_logs').select('id')
-            .eq('medication_id', med.id).eq('log_date', today)
-            .eq('reminder_time', time).maybeSingle();
-
-          if (!log) pendingMeds.push({ name: med.name, dose: med.dose, time });
-        }
-      }
-
-      if (pendingMeds.length > 0) {
-        const body = pendingMeds.length === 1
-          ? `该吃 ${pendingMeds[0].name} ${pendingMeds[0].dose} 啦`
-          : `要吃 ${pendingMeds.length} 种药：${pendingMeds.map(m => m.name).join('、')}`;
-
-        // 药物这条 push 直接送到宝宝设备；不 return，继续往下让 followup 独立判断。
-        // 药物和爸爸短信是两条线，同一次 cron fire 里可以并存。
-        await pushToAllSubs({
-          title: '宝宝', body, url: '/health',
-        });
-      }
-    } catch (e) {
-      console.error('Med reminder error:', e);
-    }
-
-    // ============================================================
     // 1.5 工作日早上"爸爸去上班"晨间消息
     // 触发条件：weekday + PST/PDT 本地 hour === 8 + 今天还没发过
     // Vercel cron 现在每小时 :00 唤醒一次；只有本地时间正好是 8:00 那次

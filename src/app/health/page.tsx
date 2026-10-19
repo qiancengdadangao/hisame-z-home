@@ -6,6 +6,7 @@ import PageArchway from '../_components/PageArchway';
 import WellbeingView from './_wellbeing';
 import StrengthView from './_strength';
 import { useState, useEffect } from 'react';
+import { syncMedReminders } from '../../lib/notify';
 
 // ===================================================
 // Shared types
@@ -410,6 +411,8 @@ function MedicationsView() {
       });
       if (res.ok) {
         await loadData();
+        // 药表变了 → 立即重排本地提醒（iOS 原生）
+        try { await syncMedReminders(); } catch { /* ignore */ }
         setShowAdd(false);
         setEditing(null);
       } else {
@@ -431,6 +434,8 @@ function MedicationsView() {
       });
       if (res.ok) {
         loadData();
+        // 删药 → 重排本地提醒
+        try { await syncMedReminders(); } catch { /* ignore */ }
         setEditing(null);
       }
     } catch (e) {
