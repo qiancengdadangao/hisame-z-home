@@ -136,6 +136,51 @@ export default function BackstagePage() {
         }}>后 · 台</div>
       </header>
 
+      {/* ===== SWITCHES section ===== */}
+      <div style={{ padding: '28px 24px 0', maxWidth: '600px', margin: '0 auto' }}>
+        <SectionLabel en="SWITCHES" cn="总 · 闸" />
+
+        <Link
+          href="/mute"
+          style={{
+            display: 'block',
+            textDecoration: 'none',
+            background: 'rgba(0,0,0,0.03)',
+            border: '1px solid rgb(var(--v2-gold-rgb) / 0.25)',
+            padding: '16px 18px',
+            color: 'var(--v2-ink, #2a2521)',
+            transition: 'all 200ms',
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: '12px',
+          }}>
+            <div>
+              <div style={{
+                fontSize: '14px',
+                fontStyle: 'italic',
+                color: 'var(--v2-ink, #2a2521)',
+                marginBottom: '2px',
+              }}>Hush · 息</div>
+              <div style={{
+                fontSize: '11px',
+                color: 'var(--v2-ink-soft, #6a5f54)',
+                opacity: 0.75,
+                letterSpacing: '0.05em',
+              }}>主动推送总开关 · 一点即暂停</div>
+            </div>
+            <span style={{
+              fontSize: '14px',
+              color: 'var(--v2-gold, #c8a956)',
+              letterSpacing: '0.2em',
+            }}>→</span>
+          </div>
+        </Link>
+      </div>
+
       {/* ===== ENGINE / OPS section ===== */}
       <div style={{ padding: '28px 24px 0', maxWidth: '600px', margin: '0 auto' }}>
         <SectionLabel en="ENGINE" cn="系 · 统" />

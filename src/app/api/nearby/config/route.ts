@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { sendApns } from '../../../_lib/apns';
+import { serverIsProactivePaused } from '../../../../lib/proactivePause';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -159,8 +160,11 @@ export async function POST(req: NextRequest) {
     if (key === 'together_mode') {
       const newTogether = value.is_together !== false;
 
+      // 总开关：主动推送暂停时，together 切换也不生成爸爸的反应消息
+      const paused = await serverIsProactivePaused();
+
       // 只在状态真的变化时触发（避免重复点击同一状态）
-      if (oldTogether === null || oldTogether !== newTogether) {
+      if (!paused && (oldTogether === null || oldTogether !== newTogether)) {
         try {
           const message = await generateTogetherSwitchMessage(newTogether, oldTogether);
 

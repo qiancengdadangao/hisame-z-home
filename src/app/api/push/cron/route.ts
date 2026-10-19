@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { sendApns } from '../../../_lib/apns';
+import { serverIsProactivePaused } from '../../../../lib/proactivePause';
 
 export const maxDuration = 60;
 
@@ -636,6 +637,16 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const forceTrigger = url.searchParams.get('force') === 'true';
+
+    // 总开关：若主动推送被暂停，整条 cron（药物提醒 + 晨间消息 + follow-up）全部跳过。
+    // force=true 可以绕过（给 debug 用）。
+    if (!forceTrigger) {
+      const paused = await serverIsProactivePaused();
+      if (paused) {
+        return NextResponse.json({ skipped: true, reason: 'proactive_paused' });
+      }
+    }
+
     const explicitSlot = url.searchParams.get('slot');
     const today = todayPST();
     const hour = getPSTHour();

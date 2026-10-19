@@ -33,6 +33,7 @@ export const TITLES: Record<string, T> = {
   '/pulse':         { en: 'Pulse',     cn: '脉搏' },
   '/closet':        { en: 'Closet',    cn: '衣橱' },
   '/car':           { en: 'Drive',     cn: '驾' },
+  '/mute':          { en: 'Hush',      cn: '息' },
 };
 
 // Explicit parent overrides for pages whose natural URL parent is '/' but
